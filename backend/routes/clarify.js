@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { askClarifyingQuestion } = require('../services/geminiClarifier');
+const { askClarifyingQuestion } = require('../services/openaiClarifier');
 
 router.post('/', async (req, res) => {
   const { resume, role, chatHistory } = req.body;

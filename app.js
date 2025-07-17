@@ -16,7 +16,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ✅ Ping route for testing connection
 app.get('/ping', (req, res) => {
-  res.send('pong');
+  res.send('ping');
 });
 
 // ✅ Backend API routes
