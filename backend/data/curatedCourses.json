@@ -1,0 +1,41 @@
+{
+  "Docker": [
+    { "title": "Docker Crash Course", "link": "https://www.youtube.com/watch?v=fqMOX6JJhGo" }
+  ],
+  "CI/CD": [
+    { "title": "CI/CD with GitHub Actions", "link": "https://www.youtube.com/watch?v=1iJXH1HkWqY" }
+  ],
+  "JavaScript": [
+    { "title": "JavaScript Basics", "link": "https://www.youtube.com/watch?v=W6NZfCO5SIk" }
+  ],
+  "React": [
+    { "title": "React for Beginners", "link": "https://www.youtube.com/watch?v=dGcsHMXbSOA" }
+  ],
+  "Node.js": [
+    { "title": "Node.js Crash Course", "link": "https://www.youtube.com/watch?v=fBNz5xF-Kx4" }
+  ],
+  "MongoDB": [
+    { "title": "MongoDB Tutorial for Beginners", "link": "https://www.youtube.com/watch?v=1j0c7d8a2gk" }
+  ],
+  "Git": [
+    { "title": "Git and GitHub for Beginners", "link": "https://www.youtube.com/watch?v=RGOj5yH7evk" }
+  ],
+  "Python": [
+    { "title": "Python for Everybody", "link": "https://www.youtube.com/watch?v=8DvywoWv6fI" }
+  ],
+  "Pandas": [
+    { "title": "Pandas Tutorial", "link": "https://www.youtube.com/watch?v=vmEHCJofslg" }
+  ],
+  "Numpy": [
+    { "title": "NumPy Tutorial", "link": "https://www.youtube.com/watch?v=QUT1VHiLmmI" }
+  ],
+  "Scikit-learn": [
+    { "title": "Scikit-learn Tutorial", "link": "https://www.youtube.com/watch?v=0Lt9w-BxKFQ" }
+  ],
+  "SQL": [
+    { "title": "SQL Tutorial for Beginners", "link": "https://www.youtube.com/watch?v=HXV3zeQKqGY" }
+  ],
+  "Statistics": [
+    { "title": "Statistics for Data Science", "link": "https://www.youtube.com/watch?v=XXqY2s4X9mM" }
+  ]
+}
