@@ -5,16 +5,6 @@ let learnedSkills = new Set();
 
 const BACKEND_URL = 'http://localhost:5001';
 
-async function testBackendConnection() {
-  try {
-    const res = await fetch(`${BACKEND_URL}/ping`);
-    const text = await res.text();
-    alert('Backend says: ' + text);
-  } catch (err) {
-    alert('❌ Backend not reachable: ' + err.message);
-  }
-}
-
 function updateProgressBar() {
   const progressBar = document.getElementById('progress-bar');
   const label = document.getElementById('progress-label');
@@ -34,7 +24,6 @@ function markSkillLearned(skill) {
   learnedSkills.add(skill);
   updateProgressBar();
 
-  // Disable the checkbox
   const checkbox = document.querySelector(`#skill-${skill.replace(/\s+/g, '-')}`);
   if (checkbox) checkbox.disabled = true;
 }
@@ -78,8 +67,7 @@ async function analyze() {
 
   try {
     const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
-
+    formData.append('resume', fileInput.files[0]);
     const parseRes = await fetch(`${BACKEND_URL}/parse-resume`, {
       method: 'POST',
       body: formData
@@ -97,15 +85,29 @@ async function analyze() {
     });
 
     let done = false;
-    while (!done) {
+    let attempts = 0;
+    const maxQuestions = 6;
+
+    while (!done && attempts < maxQuestions) {
+      attempts++;
+
       const clarifyRes = await fetch(`${BACKEND_URL}/clarify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resume: parsed, role, chatHistory })
       });
 
-      if (!clarifyRes.ok) throw new Error("Clarify API failed");
-      const resJson = await clarifyRes.json();
+      const rawText = await clarifyRes.text();
+      console.log("🧠 Raw clarify response:", rawText);
+
+      let resJson;
+      try {
+        resJson = JSON.parse(rawText);
+      } catch (e) {
+        alert("⚠️ Could not parse response.");
+        console.error("❌ JSON parse error:", e.message);
+        continue;
+      }
 
       if (resJson.status === 'done') {
         done = true;
@@ -138,7 +140,9 @@ async function analyze() {
 
       chat.innerHTML += `<p><b>AI asks:</b> ${question}</p>`;
       const userAnswer = prompt(question);
-      chatHistory.push({ role: 'model', parts: [{ text: question }] });
+      if (!userAnswer) break;
+
+      chatHistory.push({ role: 'assistant', parts: [{ text: question }] });
       chatHistory.push({ role: 'user', parts: [{ text: userAnswer }] });
 
       const newSkills = resJson.newSkills || [];

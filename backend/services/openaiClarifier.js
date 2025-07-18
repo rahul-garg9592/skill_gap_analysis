@@ -1,75 +1,107 @@
-const { OpenAI } = require('openai');
+require('dotenv').config();
+const fetch = require('node-fetch');
 
-const openai = new OpenAI({
-  apiKey: process.env.AZURE_OPENAI_API_KEY,
-  baseURL: process.env.AZURE_OPENAI_ENDPOINT,
-  defaultQuery: { 'api-version': process.env.OPENAI_API_VERSION },
-  defaultHeaders: { 'api-key': process.env.AZURE_OPENAI_API_KEY },
-});
+const AZURE_OPENAI_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
+const AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY;
 
 async function askClarifyingQuestion(resume, role, chatHistory = []) {
+  const validRoles = ['system', 'user', 'assistant'];
   const questionCount = chatHistory.filter(e => e.role === 'assistant').length;
 
-  // Convert to OpenAI format
-  const messages = chatHistory.map(entry => ({
-    role: entry.role,
-    content: entry.parts.map(p => typeof p.text === 'string' ? p.text : JSON.stringify(p.text)).join(' ')
-  }));
+  if (questionCount >= 5) {
+    return {
+      status: 'done',
+      question: null,
+      newSkills: [],
+      message: "✅ Clarification complete. Generating upskilling roadmap..."
+    };
+  }
 
-  const questionPrompt = `
-You are acting as a career coach helping a student apply for the role: **${role}**.
+  const messages = chatHistory
+    .filter(entry => validRoles.includes(entry.role))
+    .map(entry => ({
+      role: entry.role,
+      content: entry.parts.map(p =>
+        typeof p.text === 'string' ? p.text : JSON.stringify(p.text)
+      ).join(' ')
+    }));
 
-You already have their resume and the entire conversation so far. Based on their **last answer**, do the following:
+  const systemPrompt = `
+You are a career coach helping a student apply for the role: **${role}**.
+
+You have their resume and all previous questions and answers. Based on their **latest response**, follow these rules:
 
 ---
 
-1. 👀 **Review what they said** — carefully read their last response in context.
-2. 🧠 **Infer any new skills or experience** they demonstrated (write them in "newSkills").
-3. ❓ **Ask one new question** about an important missing or unclear skill.
-   - Be *specific* and *incremental*.
-   - Ask only if the skill hasn’t already been confirmed.
-   - Think like a human mentor: stay friendly, focused, and relevant.
-
-⛔ Don't repeat previous questions. End after 5 questions.
+1. 🔍 Carefully review their last answer in context.
+2. 🧠 Infer all **new skills, tools, libraries, or concepts** mentioned or implied (add them to "newSkills").
+3. ❓ Ask **one new high-impact question** that helps extract maximum useful info not already confirmed.
+   - The question must be clear, targeted, and **different from any earlier ones**.
+   - Ask about skills that would be **critical or differentiating** for this role.
+   - If they already mentioned a broad skill (e.g., web dev), dive deeper (e.g., specific framework/tools/projects).
+   - Avoid asking anything already clarified.
 
 ---
 
-🎯 Respond with this **exact JSON** (no explanation):
+💡 Think like a mentor with only 5 questions. Be strategic and extract as much as possible.
+
+🎯 Respond in this **exact JSON format** only — no explanation or extra content:
 
 {
   "status": "continue",
-  "question": "Your next smart question here",
+  "question": "Your smart next question here",
   "newSkills": ["Skill1", "Skill2"]
 }
 
-Student's Resume:
+Resume:
 ${JSON.stringify(resume, null, 2)}
 
-Conversation so far:
+Conversation History:
 ${chatHistory.map(h => `${h.role}: ${h.parts.map(p => p.text).join(' ')}`).join('\n')}
 `;
 
-  messages.push({ role: 'user', content: basePrompt });
+  messages.push({ role: 'user', content: systemPrompt });
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4.1-nano', // your Azure deployment name
-      messages,
-      temperature: 0.7
+    const response = await fetch(AZURE_OPENAI_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': AZURE_OPENAI_API_KEY
+      },
+      body: JSON.stringify({
+        messages,
+        temperature: 0.7,
+        model: 'gpt-4.1-nano'
+      })
     });
 
-    let rawText = response.choices[0].message.content.trim();
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('❌ Azure OpenAI Error:', response.status, errText);
+      throw new Error(`OpenAI Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    let rawText = data.choices[0].message.content.trim();
     rawText = rawText.replace(/```json|```/g, '').trim();
 
-    return JSON.parse(rawText);
+    try {
+      return JSON.parse(rawText);
+    } catch (err) {
+      console.error('⚠️ JSON Parse Error:', rawText);
+      throw new Error("Invalid JSON from LLM");
+    }
+
   } catch (err) {
-    console.error('❌ Azure OpenAI Error:', err.message);
+    console.error('❌ Azure OpenAI Exception:', err.message);
     return {
       status: questionCount >= 5 ? 'done' : 'continue',
       question: '⚠️ Could not parse response.',
       newSkills: [],
-      roadmap: questionCount >= 5 ? '⚠️ Failed to generate roadmap.' : undefined,
-      skills: questionCount >= 5 ? [] : undefined
+      message: questionCount >= 5
+        ? '⚠️ Failed to generate roadmap.'
+        : '⚠️ Please try again.'
     };
   }
 }
