@@ -61,6 +61,80 @@ function renderMissingSkills() {
   updateProgressBar();
 }
 
+async function startMcqRound(skills) {
+  for (const skill of skills) {
+    const response = await fetch(`${BACKEND_URL}/mcq/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parameter: skill })
+    });
+    if (!response.ok) {
+      alert('Failed to fetch MCQ.');
+      return;
+    }
+    const data = await response.json();
+    // Remove any answer reveal from the MCQ text
+    const mcqText = data.mcq.replace(/\*\*Correct answer:[^]*$/i, '').trim();
+    const userAnswer = prompt(`MCQ on ${skill} (type your answer):\n\n${mcqText}`);
+    if (!userAnswer) {
+      alert('MCQ round cancelled.');
+      return;
+    }
+    // Optionally, send userAnswer to backend for evaluation here
+  }
+  alert('Thank you for participating in the MCQ round!');
+  await updateScoreAfterMcq();
+}
+
+async function updateScoreAfterMcq() {
+  const role = document.getElementById('role').value;
+  const output = document.getElementById('output');
+  const chat = document.getElementById('chat');
+  const clarifyRes = await fetch(`${BACKEND_URL}/clarify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resume: { skills: resumeSkills }, role, chatHistory })
+  });
+  const rawText = await clarifyRes.text();
+  let resJson;
+  try {
+    resJson = JSON.parse(rawText);
+  } catch (e) {
+    alert("⚠️ Could not parse response.");
+    return;
+  }
+  if (resJson.status === 'done') {
+    let summaryHtml = '';
+    if (typeof resJson.roadmap === 'string' && resJson.roadmap.trim().length > 0) {
+      summaryHtml += `<div style="background:#e0f7fa;padding:16px;border-radius:8px;margin-bottom:16px;">
+        <b>📈 Personalized Roadmap:</b><br>${resJson.roadmap.replace(/\n/g, '<br>')}
+      </div>`;
+    }
+    if (typeof resJson.score === 'number') {
+      summaryHtml += `<p><b>⭐ Skill Match Score:</b> ${Math.round(resJson.score * 100)}%</p>`;
+    }
+    if (Array.isArray(resJson.matchedSkills)) {
+      summaryHtml += `<h3>✅ Matched Skills:</h3>${resJson.matchedSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}`;
+    }
+    if (Array.isArray(resJson.missingSkills)) {
+      summaryHtml += `<h3>❌ Missing Skills:</h3>${resJson.missingSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}`;
+    }
+    if (Array.isArray(resJson.skills)) {
+      missingSkills = resJson.missingSkills || [];
+      resumeSkills = resJson.skills;
+    }
+    summaryHtml += `<h3>✅ All Recognized Skills:</h3>
+      ${resumeSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}
+      <h3>❌ Missing Skills:</h3>`;
+    output.innerHTML = summaryHtml;
+    renderMissingSkills();
+    if (missingSkills.length > 0) {
+      document.getElementById('progress-container').style.display = 'block';
+    }
+    alert('Your score has been updated!');
+  }
+}
+
 function showSatisfactionPopup(onYes, onNo) {
   // Remove any existing popup
   const existing = document.getElementById('satisfaction-popup');
@@ -87,8 +161,13 @@ function showSatisfactionPopup(onYes, onNo) {
     popup.remove();
     if (onYes) onYes();
   };
-  document.getElementById('satisfy-no').onclick = () => {
+  document.getElementById('satisfy-no').onclick = async () => {
     popup.remove();
+    if (typeof missingSkills !== 'undefined' && missingSkills.length > 0) {
+      await startMcqRound(missingSkills);
+    } else {
+      alert('No missing skills to generate MCQ for.');
+    }
     if (onNo) onNo();
   };
 }
@@ -382,74 +461,8 @@ analyze = async function() {
       // User is satisfied
       alert('Thank you for your feedback!');
     },
-    async () => {
-      // User is not satisfied, trigger another RAG clarification round
-      const output = document.getElementById('output');
-      const chat = document.getElementById('chat');
-      const role = document.getElementById('role').value;
-      let done = false;
-      let attempts = 0;
-      const maxQuestions = 3;
-      while (!done && attempts < maxQuestions) {
-        attempts++;
-        const clarifyRes = await fetch(`${BACKEND_URL}/clarify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ resume: { skills: resumeSkills }, role, chatHistory })
-        });
-        const rawText = await clarifyRes.text();
-        let resJson;
-        try {
-          resJson = JSON.parse(rawText);
-        } catch (e) {
-          alert("⚠️ Could not parse response.");
-          continue;
-        }
-        if (resJson.status === 'done') {
-          // Show updated score/roadmap as before
-          let summaryHtml = '';
-          if (typeof resJson.roadmap === 'string' && resJson.roadmap.trim().length > 0) {
-            summaryHtml += `<div style="background:#e0f7fa;padding:16px;border-radius:8px;margin-bottom:16px;">
-              <b>📈 Personalized Roadmap:</b><br>${resJson.roadmap.replace(/\n/g, '<br>')}
-            </div>`;
-          }
-          if (typeof resJson.score === 'number') {
-            summaryHtml += `<p><b>⭐ Skill Match Score:</b> ${Math.round(resJson.score * 100)}%</p>`;
-          }
-          if (Array.isArray(resJson.matchedSkills)) {
-            summaryHtml += `<h3>✅ Matched Skills:</h3>${resJson.matchedSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}`;
-          }
-          if (Array.isArray(resJson.missingSkills)) {
-            summaryHtml += `<h3>❌ Missing Skills:</h3>${resJson.missingSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}`;
-          }
-          if (Array.isArray(resJson.skills)) {
-            missingSkills = resJson.missingSkills || [];
-            resumeSkills = resJson.skills;
-          }
-          summaryHtml += `<h3>✅ All Recognized Skills:</h3>
-            ${resumeSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}
-            <h3>❌ Missing Skills:</h3>`;
-          output.innerHTML = summaryHtml;
-          renderMissingSkills();
-          if (missingSkills.length > 0) {
-            document.getElementById('progress-container').style.display = 'block';
-          }
-          alert('Your score has been updated!');
-          return;
-        }
-        // If a question is present, ask the user
-        let question = resJson.question?.question || resJson.question;
-        if (typeof question === 'string' && question.trim()) {
-          chat.innerHTML += `<p><b>AI asks:</b> ${question}</p>`;
-          const userAnswer = prompt(question);
-          if (!userAnswer) break;
-          chatHistory.push({ role: 'assistant', parts: [{ text: question }] });
-          chatHistory.push({ role: 'user', parts: [{ text: userAnswer }] });
-        } else {
-          // No question, break loop
-          break;
-        }
-      }
+    () => {
+      // User is not satisfied, MCQ round handled in popup
     }
   );
 };

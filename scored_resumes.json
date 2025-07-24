@@ -1386,3 +1386,96 @@
   ],
   "score": 0.83
 },
+{
+  "name": "Pranav Jain",
+  "age": 21,
+  "skills": [
+    "Data Science",
+    "Web Scraping",
+    "ML Model Implementation",
+    "Full-Stack Development",
+    "LLM & AI",
+    "Image & Signal Processing",
+    "Automation",
+    "Backend & Frontend Development",
+    "Decision-Making Algorithms",
+    "Object Detection",
+    "OCR"
+  ],
+  "score": 0.89
+},
+{
+  "name": "Pranav Jain",
+  "age": 21,
+  "skills": [
+    "Data Science",
+    "ML Models",
+    "Web Scraping",
+    "LLM Pipelines",
+    "Frontend Development",
+    "Backend Development",
+    "Full-Stack Development",
+    "Decision-Making Algorithms",
+    "Object Detection",
+    "OCR"
+  ],
+  "score": 0.88
+},
+{
+  "name": "Pranav Jain",
+  "age": 21,
+  "skills": [
+    "Data Science",
+    "Machine Learning",
+    "Web Development",
+    "Full-stack Development",
+    "NLP",
+    "Computer Vision",
+    "Decision-Making Algorithms"
+  ],
+  "score": 0.86
+},
+{
+  "name": "Pranav Jain",
+  "age": 21,
+  "skills": [
+    "Data Science",
+    "ML models",
+    "Web Scraping",
+    "LLM pipelines",
+    "Frontend Development",
+    "Backend Integration",
+    "Full-stack Development",
+    "Decision-making algorithms",
+    "Object Detection",
+    "OCR"
+  ],
+  "score": 0.86
+},
+{
+  "name": "Pranav Jain",
+  "age": 20,
+  "skills": [
+    "LLM pipelines",
+    "web scraping",
+    "AI-driven scoring",
+    "ML models",
+    "wearable hardware",
+    "frontend development",
+    "backend integration",
+    "full-stack development",
+    "RESTful APIs",
+    "ReactJS",
+    "Node.js",
+    "MongoDB",
+    "Azure GPT-4",
+    "pdf-Parse",
+    "Puppeteer",
+    "Express.js",
+    "Python",
+    "YOLOv5",
+    "OCR",
+    "OpenCV"
+  ],
+  "score": 0.91
+},

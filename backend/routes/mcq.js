@@ -10,7 +10,7 @@ router.post('/generate', async (req, res) => {
 
     const context = retrieved.map(doc => doc.text).join('\n');
 
-    const prompt = `Using the following context:\n${context}\n\nGenerate a single JavaScript MCQ with one correct answer and three incorrect options.`;
+    const prompt = `Using the following context:\n${context}\n\nGenerate a single JavaScript MCQ with one correct answer and three incorrect options. Do not reveal the correct answer. Only return the question and options.`;
 
     const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
     const apiKey = process.env.AZURE_OPENAI_API_KEY;
