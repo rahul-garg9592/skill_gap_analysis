@@ -157,6 +157,8 @@ ${chatHistory.map(h => `${h.role}: ${h.parts.map(p => p.text).join(' ')}`).join(
       body: JSON.stringify({
         messages,
         temperature: 0.7,
+        top_p: 1,
+        max_tokens: 32768,
         model: 'gpt-4.1-nano'
       })
     });

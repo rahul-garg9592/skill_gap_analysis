@@ -24,7 +24,10 @@ app.use('/clarify', require('./backend/routes/clarify'));
 app.use('/analyze-skill-gaps', require('./backend/routes/analyze'));
 app.use('/youtube', require('./backend/routes/youtube'));
 app.use('/parse-resume', require('./backend/routes/parse')); // File upload route
-
+app.use('/mcq', require('./backend/routes/mcq'));
+app.use('/evaluate', require('./backend/routes/evaluate'));
+const retrieveRoute = require('./backend/routes/analyze'); // or the new file you created
+app.use('/api', retrieveRoute);
 // ✅ Fallback to serve frontend HTML on root
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

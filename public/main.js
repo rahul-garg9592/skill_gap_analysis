@@ -61,6 +61,38 @@ function renderMissingSkills() {
   updateProgressBar();
 }
 
+function showSatisfactionPopup(onYes, onNo) {
+  // Remove any existing popup
+  const existing = document.getElementById('satisfaction-popup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'satisfaction-popup';
+  popup.style.position = 'fixed';
+  popup.style.top = '50%';
+  popup.style.left = '50%';
+  popup.style.transform = 'translate(-50%, -50%)';
+  popup.style.background = '#fff';
+  popup.style.border = '2px solid #00796b';
+  popup.style.padding = '24px';
+  popup.style.zIndex = 1000;
+  popup.style.borderRadius = '12px';
+  popup.innerHTML = `
+    <div style="margin-bottom: 16px; font-size: 1.1em;">Are you satisfied with your score?</div>
+    <button id="satisfy-yes" style="margin-right: 12px;">Yes</button>
+    <button id="satisfy-no">No</button>
+  `;
+  document.body.appendChild(popup);
+  document.getElementById('satisfy-yes').onclick = () => {
+    popup.remove();
+    if (onYes) onYes();
+  };
+  document.getElementById('satisfy-no').onclick = () => {
+    popup.remove();
+    if (onNo) onNo();
+  };
+}
+
 async function analyze() {
   const fileInput = document.getElementById('resumeFile');
   const role = document.getElementById('role').value;
@@ -290,6 +322,41 @@ async function analyze() {
   }
 }
 
+async function getRelevantDocs(query, topK = 2) {
+  const response = await fetch(`${BACKEND_URL}/retrieve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, topK })
+  });
+  if (!response.ok) throw new Error('Retrieval failed');
+  const data = await response.json();
+  return data.results;
+}
+
+// Add event listener for knowledge base search
+window.addEventListener('DOMContentLoaded', () => {
+  const searchBtn = document.getElementById('searchBtn');
+  if (searchBtn) {
+    searchBtn.onclick = async () => {
+      const query = document.getElementById('searchInput').value;
+      const resultsDiv = document.getElementById('retrievalResults');
+      resultsDiv.innerHTML = '⏳ Searching...';
+      try {
+        const results = await getRelevantDocs(query);
+        resultsDiv.innerHTML = results.map((doc, idx) => `
+          <div class="retrieved-doc">
+            <b>Result ${idx + 1} (${doc.file}):</b>
+            <pre>${doc.text}</pre>
+            <small>Score: ${doc.score.toFixed(4)}</small>
+          </div>
+        `).join('');
+      } catch (err) {
+        resultsDiv.innerHTML = `<span style="color:red;">Error: ${err.message}</span>`;
+      }
+    };
+  }
+});
+
 window.markSkillLearned = markSkillLearned;
 
 // Store required skills for the selected role globally for fallback use
@@ -305,5 +372,84 @@ analyze = async function() {
       window.roleSkillsForCurrentRole = allRoles[role] || [];
     }
   } catch {}
-  return originalAnalyze.apply(this, arguments);
+
+  // Call the original analyze logic
+  await originalAnalyze.apply(this, arguments);
+
+  // After showing the score/roadmap, show satisfaction popup
+  showSatisfactionPopup(
+    () => {
+      // User is satisfied
+      alert('Thank you for your feedback!');
+    },
+    async () => {
+      // User is not satisfied, trigger another RAG clarification round
+      const output = document.getElementById('output');
+      const chat = document.getElementById('chat');
+      const role = document.getElementById('role').value;
+      let done = false;
+      let attempts = 0;
+      const maxQuestions = 3;
+      while (!done && attempts < maxQuestions) {
+        attempts++;
+        const clarifyRes = await fetch(`${BACKEND_URL}/clarify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resume: { skills: resumeSkills }, role, chatHistory })
+        });
+        const rawText = await clarifyRes.text();
+        let resJson;
+        try {
+          resJson = JSON.parse(rawText);
+        } catch (e) {
+          alert("⚠️ Could not parse response.");
+          continue;
+        }
+        if (resJson.status === 'done') {
+          // Show updated score/roadmap as before
+          let summaryHtml = '';
+          if (typeof resJson.roadmap === 'string' && resJson.roadmap.trim().length > 0) {
+            summaryHtml += `<div style="background:#e0f7fa;padding:16px;border-radius:8px;margin-bottom:16px;">
+              <b>📈 Personalized Roadmap:</b><br>${resJson.roadmap.replace(/\n/g, '<br>')}
+            </div>`;
+          }
+          if (typeof resJson.score === 'number') {
+            summaryHtml += `<p><b>⭐ Skill Match Score:</b> ${Math.round(resJson.score * 100)}%</p>`;
+          }
+          if (Array.isArray(resJson.matchedSkills)) {
+            summaryHtml += `<h3>✅ Matched Skills:</h3>${resJson.matchedSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}`;
+          }
+          if (Array.isArray(resJson.missingSkills)) {
+            summaryHtml += `<h3>❌ Missing Skills:</h3>${resJson.missingSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}`;
+          }
+          if (Array.isArray(resJson.skills)) {
+            missingSkills = resJson.missingSkills || [];
+            resumeSkills = resJson.skills;
+          }
+          summaryHtml += `<h3>✅ All Recognized Skills:</h3>
+            ${resumeSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}
+            <h3>❌ Missing Skills:</h3>`;
+          output.innerHTML = summaryHtml;
+          renderMissingSkills();
+          if (missingSkills.length > 0) {
+            document.getElementById('progress-container').style.display = 'block';
+          }
+          alert('Your score has been updated!');
+          return;
+        }
+        // If a question is present, ask the user
+        let question = resJson.question?.question || resJson.question;
+        if (typeof question === 'string' && question.trim()) {
+          chat.innerHTML += `<p><b>AI asks:</b> ${question}</p>`;
+          const userAnswer = prompt(question);
+          if (!userAnswer) break;
+          chatHistory.push({ role: 'assistant', parts: [{ text: question }] });
+          chatHistory.push({ role: 'user', parts: [{ text: userAnswer }] });
+        } else {
+          // No question, break loop
+          break;
+        }
+      }
+    }
+  );
 };

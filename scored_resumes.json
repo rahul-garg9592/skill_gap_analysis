@@ -1284,3 +1284,105 @@
   ],
   "score": 0.74
 },
+{
+  "name": "Pranav Jain",
+  "age": 20,
+  "skills": [
+    "LLM pipelines",
+    "web scraping",
+    "AI-driven scoring",
+    "ML models",
+    "wearable hardware development",
+    "image evaluation",
+    "frontend development",
+    "full-stack development",
+    "RESTful APIs",
+    "resume analysis",
+    "skill gap analysis",
+    "multi-criteria decision-making",
+    "YOLOv5",
+    "OCR",
+    "Python",
+    "ReactJS",
+    "Node.js",
+    "MongoDB",
+    "Flask"
+  ],
+  "score": 0.89
+},
+{
+  "name": "Pranav Jain",
+  "age": 21,
+  "skills": [
+    "LLM pipelines",
+    "web scraping",
+    "AI-driven scoring",
+    "ML models for medical imaging",
+    "hardware development for signal capture",
+    "frontend development",
+    "backend integration",
+    "full-stack development",
+    "resume skill gap analysis",
+    "decision-making algorithms",
+    "object detection",
+    "OCR",
+    "web development"
+  ],
+  "score": 0.87
+},
+{
+  "name": "Pranav Jain",
+  "age": 21,
+  "skills": [
+    "Data Science",
+    "Machine Learning",
+    "Web Scraping",
+    "Full-stack Development",
+    "NLP & LLM",
+    "Image Processing",
+    "Decision-Making Algorithms"
+  ],
+  "score": 0.86
+},
+{
+  "name": "Pranav Jain",
+  "age": 21,
+  "skills": [
+    "Data Science",
+    "ML models",
+    "Web scraping",
+    "LLM pipelines",
+    "ReactJS",
+    "Node.js",
+    "MongoDB",
+    "Express.js",
+    "Python",
+    "YOLOv5",
+    "OCR",
+    "OpenCV",
+    "Decision-making algorithms"
+  ],
+  "score": 0.87
+},
+{
+  "name": "Pranav Jain",
+  "age": 21,
+  "skills": [
+    "LLM pipelines",
+    "web scraping",
+    "AI-driven scoring",
+    "ML models",
+    "wearable hardware",
+    "frontend development",
+    "backend integration",
+    "full-stack development",
+    "API development",
+    "resume analysis",
+    "skill gap analysis",
+    "decision-making algorithms",
+    "object detection",
+    "OCR",
+    "web interface development"
+  ],
+  "score": 0.83
+},
