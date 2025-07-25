@@ -28,17 +28,11 @@ function updateProgressBar() {
   const percent = Math.round((learnedCount / missingSkills.length) * 100);
   progressBar.value = percent;
   label.innerText = `Progress: ${percent}%`;
-}
-
-function markSkillLearned(skill) {
-  const checkbox = document.querySelector(`#skill-${skill.replace(/\s+/g, '-')}`);
-  const normalized = normalizeSkillName(skill);
-  if (checkbox && checkbox.checked) {
-    learnedSkills.add(normalized);
-  } else {
-    learnedSkills.delete(normalized);
+  if (percent === 100 && missingSkills.length > 0) {
+    showConfetti();
+    showBanner('🎉 Congratulations! You have learned all the missing skills!','success');
+    pulseProgressBar();
   }
-  updateProgressBar();
 }
 
 function renderMissingSkills() {
@@ -46,18 +40,31 @@ function renderMissingSkills() {
   output.innerHTML += `<h3>📘 Track Your Progress:</h3>`;
 
   missingSkills.forEach(skill => {
-    const skillId = `skill-${skill.replace(/\s+/g, '-')}`;
+    const normalizedSkill = normalizeSkillName(skill);
+    const skillId = `skill-${normalizedSkill.replace(/[^a-z0-9]/g, '-')}`;
     const div = document.createElement('div');
     div.className = 'skill-box';
     div.innerHTML = `
       <label>
-        <input type="checkbox" id="${skillId}" onchange="markSkillLearned('${skill}')">
+        <input type="checkbox" id="${skillId}" value="${normalizedSkill}" onchange="markSkillLearned('${skill}')">
         ${skill}
       </label>
     `;
     output.appendChild(div);
   });
 
+  updateProgressBar();
+}
+
+function markSkillLearned(skill) {
+  const normalized = normalizeSkillName(skill);
+  const skillId = `skill-${normalized.replace(/[^a-z0-9]/g, '-')}`;
+  const checkbox = document.getElementById(skillId);
+  if (checkbox && checkbox.checked) {
+    learnedSkills.add(normalized);
+  } else {
+    learnedSkills.delete(normalized);
+  }
   updateProgressBar();
 }
 
@@ -114,17 +121,17 @@ async function updateScoreAfterMcq() {
       summaryHtml += `<p><b>⭐ Skill Match Score:</b> ${Math.round(resJson.score * 100)}%</p>`;
     }
     if (Array.isArray(resJson.matchedSkills)) {
-      summaryHtml += `<h3>✅ Matched Skills:</h3>${resJson.matchedSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}`;
+      summaryHtml += `<h3>✅ Matched Skills:</h3>${resJson.matchedSkills.map(s => renderSkillCard(s, 'matched')).join('')}`;
     }
     if (Array.isArray(resJson.missingSkills)) {
-      summaryHtml += `<h3>❌ Missing Skills:</h3>${resJson.missingSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}`;
+      summaryHtml += `<h3>❌ Missing Skills:</h3>${resJson.missingSkills.map(s => renderSkillCard(s, 'missing')).join('')}`;
     }
     if (Array.isArray(resJson.skills)) {
       missingSkills = resJson.missingSkills || [];
       resumeSkills = resJson.skills;
     }
     summaryHtml += `<h3>✅ All Recognized Skills:</h3>
-      ${resumeSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}
+      ${resumeSkills.map(s => renderSkillCard(s)).join('')}
       <h3>❌ Missing Skills:</h3>`;
     output.innerHTML = summaryHtml;
     renderMissingSkills();
@@ -172,6 +179,82 @@ function showSatisfactionPopup(onYes, onNo) {
   };
 }
 
+// Enhanced chat bubble rendering with emoji avatars and fade-in
+function addChatBubble(text, sender = 'ai') {
+  const chat = document.getElementById('chat');
+  const bubble = document.createElement('div');
+  bubble.className = `chat-bubble ${sender}`;
+  const avatar = sender === 'ai' ? '🤖' : '🧑';
+  bubble.innerHTML = `<span class='chat-avatar'>${avatar}</span><span>${text}</span>`;
+  chat.appendChild(bubble);
+  setTimeout(() => { bubble.style.opacity = 1; }, 10);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// Animate skill cards and add colorful badges
+function renderSkillCard(skill, type = 'default') {
+  let badge = '';
+  if (type === 'matched') badge = `<span class='skill-badge' style='background:linear-gradient(90deg,#34d399,#38bdf8);'>Matched</span>`;
+  if (type === 'missing') badge = `<span class='skill-badge' style='background:linear-gradient(90deg,#fbbf24,#f472b6);'>Missing</span>`;
+  return `<div class='skill-box'>${skill} ${badge}</div>`;
+}
+
+// Confetti animation
+function showConfetti() {
+  const confetti = document.createElement('div');
+  confetti.style.position = 'fixed';
+  confetti.style.left = 0;
+  confetti.style.top = 0;
+  confetti.style.width = '100vw';
+  confetti.style.height = '100vh';
+  confetti.style.pointerEvents = 'none';
+  confetti.style.zIndex = 9999;
+  confetti.innerHTML = Array.from({length: 80}).map(() => {
+    const color = ['#38bdf8','#6366f1','#fbbf24','#f472b6','#34d399'][Math.floor(Math.random()*5)];
+    const left = Math.random()*100;
+    const delay = Math.random()*2;
+    const duration = 2+Math.random()*2;
+    return `<div style='position:absolute;left:${left}vw;top:-10vh;width:12px;height:12px;background:${color};border-radius:50%;opacity:0.8;animation:confetti-fall ${duration}s ${delay}s linear forwards;'></div>`;
+  }).join('') + `<style>@keyframes confetti-fall{to{top:110vh;transform:rotate(720deg);}}</style>`;
+  document.body.appendChild(confetti);
+  setTimeout(()=>confetti.remove(), 4000);
+}
+
+// Colorful banner
+function showBanner(message, type = 'success') {
+  const output = document.getElementById('output');
+  const color = type === 'success' ? 'linear-gradient(90deg,#34d399,#38bdf8)' : 'linear-gradient(90deg,#fbbf24,#f472b6)';
+  output.innerHTML = `<div class='banner' style='background:${color};'>${message}</div>` + output.innerHTML;
+}
+
+// Pulse effect for progress bar
+function pulseProgressBar() {
+  const bar = document.getElementById('progress-bar');
+  bar.style.boxShadow = '0 0 16px 4px #38bdf8';
+  setTimeout(()=>{bar.style.boxShadow='';}, 1200);
+}
+
+// Render roadmap as a vertical timeline
+function renderRoadmapTimeline(roadmapText) {
+  const output = document.getElementById('output');
+  const steps = roadmapText.split(/\n|\r/).filter(Boolean);
+  let html = '<div class="roadmap-timeline">';
+  steps.forEach(step => {
+    html += `<div class="roadmap-step">${step}</div>`;
+  });
+  html += '</div>';
+  output.innerHTML += html;
+}
+
+// Add loading spinner
+function showLoadingSpinner() {
+  const output = document.getElementById('output');
+  output.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:120px;">
+    <div class="spinner" style="border: 6px solid #e0e7ff; border-top: 6px solid #6366f1; border-radius: 50%; width: 48px; height: 48px; animation: spin 1s linear infinite;"></div>
+    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+  </div>`;
+}
+
 async function analyze() {
   const fileInput = document.getElementById('resumeFile');
   const role = document.getElementById('role').value;
@@ -180,7 +263,7 @@ async function analyze() {
   const progressContainer = document.getElementById('progress-container');
   const progressBar = document.getElementById('progress-bar');
 
-  output.innerHTML = '⏳ Analyzing your resume...';
+  showLoadingSpinner();
   chat.innerHTML = '';
   progressContainer.style.display = 'none';
   progressBar.value = 0;
@@ -240,27 +323,28 @@ async function analyze() {
         let summaryHtml = '';
         if (typeof resJson.roadmap === 'string' && resJson.roadmap.trim().length > 0) {
           summaryHtml += `<div style="background:#e0f7fa;padding:16px;border-radius:8px;margin-bottom:16px;">
-            <b>📈 Personalized Roadmap:</b><br>${resJson.roadmap.replace(/\n/g, '<br>')}
-          </div>`;
+            <b>📈 Personalized Roadmap:</b></div>`;
         }
         if (typeof resJson.score === 'number') {
           summaryHtml += `<p><b>⭐ Skill Match Score:</b> ${Math.round(resJson.score * 100)}%</p>`;
         }
         if (Array.isArray(resJson.matchedSkills)) {
-          summaryHtml += `<h3>✅ Matched Skills:</h3>${resJson.matchedSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}`;
+          summaryHtml += `<h3>✅ Matched Skills:</h3>${resJson.matchedSkills.map(s => renderSkillCard(s, 'matched')).join('')}`;
         }
         if (Array.isArray(resJson.missingSkills)) {
-          summaryHtml += `<h3>❌ Missing Skills:</h3>${resJson.missingSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}`;
+          summaryHtml += `<h3>❌ Missing Skills:</h3>${resJson.missingSkills.map(s => renderSkillCard(s, 'missing')).join('')}`;
         }
         if (Array.isArray(resJson.skills)) {
           missingSkills = resJson.missingSkills || [];
           resumeSkills = resJson.skills;
         }
         summaryHtml += `<h3>✅ All Recognized Skills:</h3>
-          ${resumeSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}
+          ${resumeSkills.map(s => renderSkillCard(s)).join('')}
           <h3>❌ Missing Skills:</h3>`;
         output.innerHTML = summaryHtml;
-        console.log('OUTPUT HTML:', output.innerHTML); // Debug log
+        if (typeof resJson.roadmap === 'string' && resJson.roadmap.trim().length > 0) {
+          renderRoadmapTimeline(resJson.roadmap);
+        }
         renderMissingSkills();
         if (missingSkills.length > 0) {
           progressContainer.style.display = 'block';
@@ -292,9 +376,10 @@ async function analyze() {
         break;
       }
 
-      chat.innerHTML += `<p><b>AI asks:</b> ${question}</p>`;
+      addChatBubble(question, 'ai');
       const userAnswer = prompt(question);
       if (!userAnswer) break;
+      addChatBubble(userAnswer, 'user');
 
       chatHistory.push({ role: 'assistant', parts: [{ text: question }] });
       chatHistory.push({ role: 'user', parts: [{ text: userAnswer }] });
@@ -323,7 +408,7 @@ async function analyze() {
               }
             });
             if (found) {
-              chat.innerHTML += `<p style='color:blue;'>🛠️ Fallback: Added canonical skill(s) from question: ${addedSkills.join(', ')}</p>`;
+              addChatBubble(`🛠️ Fallback: Added canonical skill(s) from question: ${addedSkills.join(', ')}`, 'ai');
             } else {
               // If no canonical match, fallback to previous logic
               const normalizedSkill = extractedPhrase;
@@ -331,14 +416,14 @@ async function analyze() {
               if (!alreadyPresent) {
                 resumeSkills.push(match[1].trim());
                 addedSkills.push(match[1].trim());
-                chat.innerHTML += `<p style='color:blue;'>🛠️ Fallback: Added skill from question: ${match[1].trim()}</p>`;
+                addChatBubble(`🛠️ Fallback: Added skill from question: ${match[1].trim()}`, 'ai');
               }
             }
           }
         }
         if (addedSkills.length === 0) {
           console.warn('⚠️ newSkills is missing or not an array:', newSkills);
-          chat.innerHTML += `<p style='color:orange;'>⚠️ No new skills detected from your answer.</p>`;
+          addChatBubble('⚠️ No new skills detected from your answer.', 'ai');
         }
       } else {
         for (const skill of newSkills) {
@@ -353,9 +438,9 @@ async function analyze() {
         console.log('🆕 newSkills from clarify:', newSkills);
         console.log('📋 Updated resumeSkills:', resumeSkills);
         if (addedSkills.length > 0) {
-          chat.innerHTML += `<p style='color:green;'>🆕 Added skills: ${addedSkills.join(', ')}</p>`;
+          addChatBubble(`🆕 Added skills: ${addedSkills.join(', ')}`, 'ai');
         } else {
-          chat.innerHTML += `<p style='color:gray;'>No new skills added from your answer.</p>`;
+          addChatBubble('No new skills added from your answer.', 'ai');
         }
       }
     }
@@ -372,7 +457,7 @@ async function analyze() {
 
     // Show all recognized skills (from resume and questions)
     output.innerHTML = `<h3>✅ All Recognized Skills:</h3>
-      ${resumeSkills.map(s => `<div class='skill-box'>${s}</div>`).join('')}
+      ${resumeSkills.map(s => renderSkillCard(s)).join('')}
       <h3>❌ Missing Skills:</h3>`;
 
     renderMissingSkills();
